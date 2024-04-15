@@ -1,0 +1,57 @@
+- route:
+    id: csv2insertqueue
+    from:
+      id: from-1153
+      uri: file
+      parameters:
+        delete: true
+        directoryName: inbox/
+      steps:
+        - unmarshal:
+            id: unmarshal-2657
+            csv:
+              allowMissingColumnNames: true
+              trim: true
+        - split:
+            id: split-2436
+            steps:
+              - setBody:
+                  id: setBody-1465
+                  expression:
+                    simple:
+                      expression: INSERT INTO tbl_people (Id, LastName, FirstName, Job, House) VALUES
+                        (${body[0]}, '${body[1]}', '${body[2]}', '${body[3]}',
+                        '${body[4]}');
+                      resultType: java.lang.String
+                      trim: true
+              - to:
+                  id: to-3471
+                  description: store inserts
+                  uri: direct
+                  parameters:
+                    name: sql-inbox
+            expression:
+              simple:
+                expression: ${body}
+- route:
+    id: executeInserts
+    from:
+      id: from-4155
+      description: read the inserts
+      uri: direct
+      parameters:
+        name: sql-inbox
+      steps:
+        - log:
+            id: log-5356
+            message: ${body}
+        - to:
+            id: to-3627
+            uri: jdbc
+            parameters:
+              dataSourceName: sqliteDS
+- beans:
+    - name: sqliteDS
+      properties:
+        url: jdbc:sqlite:./DB/data
+      type: org.sqlite.SQLiteDataSource
